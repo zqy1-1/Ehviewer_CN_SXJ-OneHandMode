@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [ BiLi_PC_Gamer ]
+    branches: [ BiLi_PC_Gamer, sxj-zqy-single-hand ]
   pull_request:
     branches: [ BiLi_PC_Gamer ]
   workflow_dispatch:
@@ -21,13 +21,29 @@ jobs:
           distribution: 'temurin'
           java-version: 21
 
-      - name: Build
+      - name: Show patch note
+        run: |
+          echo "## 本构建包含的定制" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **单手模式 (One-hand mode)**：阅读设置中新增单手模式开关，优化单手操作体验" >> $GITHUB_STEP_SUMMARY
+          echo "- **独立包名**：\`com.xjs.ehviewer.zqy\`（可与原版 XJ EhViewer 共存，不覆盖）" >> $GITHUB_STEP_SUMMARY
+          echo "- **弱签名**：test.key（仅供自用安装）" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Build release APK
         run: |
           chmod +x ./gradlew
-          ./gradlew app:assembleDebug
-          
+          ./gradlew app:assembleAppReleaseRelease --stacktrace
+
+      - name: Collect APKs
+        run: |
+          mkdir -p out
+          find app/build/outputs/apk -name "*.apk" -exec cp {} out/ \;
+          ls -lh out/
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Build
-          path: ./app/build/outputs/apk/
+          name: EhViewer-OneHandMode-${{ github.sha }}
+          path: out/*.apk
+          if-no-files-found: error
