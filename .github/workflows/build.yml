@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [ BiLi_PC_Gamer ]
+    branches: [ BiLi_PC_Gamer, sxj-zqy-single-hand ]
   pull_request:
     branches: [ BiLi_PC_Gamer ]
   workflow_dispatch:
@@ -10,6 +10,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -21,13 +23,63 @@ jobs:
           distribution: 'temurin'
           java-version: 21
 
-      - name: Build
+      # 版本号从仓库内的 app/build.gradle 读取（仓库自身文件，非外部不可信输入）
+      - name: Read version
+        id: ver
+        run: |
+          VN=$(grep -m1 'versionName' app/build.gradle | sed 's/.*versionName "\([^"]*\)".*/\1/')
+          VC=$(grep -m1 'versionCode' app/build.gradle | sed 's/.*versionCode \([0-9]*\).*/\1/')
+          echo "name=$VN" >> "$GITHUB_OUTPUT"
+          echo "code=$VC" >> "$GITHUB_OUTPUT"
+          echo "upstream version = $VN (versionCode $VC)"
+
+      - name: Show patch note
+        run: |
+          {
+            echo "## 本构建包含的定制"
+            echo ""
+            echo "- **单手模式 (One-hand mode)**：漫画页 -> 菜单 -> 阅读方向 -> 单手模式；开启后点图片左边或右边都翻下一页"
+            echo "- **独立包名**：com.xjs.ehviewer.zqy（可与原版 XJ EhViewer 共存，不覆盖）"
+            echo "- **签名**：仓库内 test.key（与历史 release 同一密钥，可直接覆盖安装旧版 .zqy 包）"
+            echo "- **基线**：上游 ${{ steps.ver.outputs.name }}（versionCode ${{ steps.ver.outputs.code }}）"
+            echo "- **ABI**：arm64-v8a"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build release APK
         run: |
           chmod +x ./gradlew
-          ./gradlew app:assembleDebug
-          
+          ./gradlew app:assembleAppReleaseRelease --stacktrace
+
+      - name: Collect APK
+        run: |
+          mkdir -p out
+          APK=$(find app/build/outputs/apk -name "*.apk" | head -1)
+          echo "built: $APK"
+          test -n "$APK"
+          cp "$APK" "out/EhViewer-OneHandMode-${{ steps.ver.outputs.name }}-zqy.apk"
+          ls -lh out/
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Build
-          path: ./app/build/outputs/apk/
+          name: EhViewer-OneHandMode-${{ steps.ver.outputs.name }}-${{ github.sha }}
+          path: out/*.apk
+          if-no-files-found: error
+
+      - name: Publish APK to release
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: EhViewer-OneHandMode-${{ steps.ver.outputs.name }}
+          name: EhViewer-OneHandMode-${{ steps.ver.outputs.name }}
+          files: out/*.apk
+          fail_on_unmatched_files: true
+          body: |
+            基于上游 XJ EhViewer **${{ steps.ver.outputs.name }}**（versionCode ${{ steps.ver.outputs.code }}）同步后重新打上单手模式补丁的构建。
+
+            **单手模式**：漫画页点击中间唤出菜单 -> 阅读方向 -> 单手模式。开启后无论点图片左边还是右边，都翻到下一页，手机换手不用再改"从左到右/从右到左"。
+
+            **安装说明**
+            - 包名 `com.xjs.ehviewer.zqy`，可与原版绿E共存。
+            - 与之前的 OneHandMode 版本**同一签名（test.key）**，可直接覆盖安装，无需卸载、不丢数据。
+            - 仅 arm64-v8a，Android 6.0+。
