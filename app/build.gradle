@@ -30,7 +30,8 @@ android {
         minSdkVersion 23
         //noinspection ExpiredTargetSdkVersion
         targetSdkVersion 30
-        versionCode 111
+        // zqy: 在上游 versionCode 基础上 +1，保证 zqy 包始终高于上一版，可直接覆盖安装
+        versionCode 112
         versionName "2.0.2.6"
         vectorDrawables.useSupportLibrary = true
         resourceConfigurations += ['zh', 'zh-rCN', 'zh-rHK', 'zh-rTW', 'es', 'ja', 'ko', 'fr', 'de', 'th']

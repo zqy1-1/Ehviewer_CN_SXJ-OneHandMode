@@ -72,6 +72,7 @@ jobs:
         with:
           tag_name: EhViewer-OneHandMode-${{ steps.ver.outputs.name }}
           name: EhViewer-OneHandMode-${{ steps.ver.outputs.name }}
+          target_commitish: ${{ github.sha }}
           files: out/*.apk
           fail_on_unmatched_files: true
           body: |
