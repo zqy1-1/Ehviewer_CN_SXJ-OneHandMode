@@ -27,8 +27,8 @@ jobs:
       - name: Read version
         id: ver
         run: |
-          VN=$(grep -m1 'versionName' app/build.gradle | sed 's/.*versionName "\([^"]*\)".*/\1/')
-          VC=$(grep -m1 'versionCode' app/build.gradle | sed 's/.*versionCode \([0-9]*\).*/\1/')
+          VN=$(grep -m1 -E '^[[:space:]]*versionName ' app/build.gradle | sed 's/.*versionName "\([^"]*\)".*/\1/')
+          VC=$(grep -m1 -E '^[[:space:]]*versionCode ' app/build.gradle | sed 's/.*versionCode \([0-9]*\).*/\1/')
           echo "name=$VN" >> "$GITHUB_OUTPUT"
           echo "code=$VC" >> "$GITHUB_OUTPUT"
           echo "upstream version = $VN (versionCode $VC)"
